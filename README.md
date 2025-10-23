@@ -13,11 +13,11 @@ Landing Page Scanner is a modern, responsive web application that audits any lan
 ## Tech stack
 
 - **Frontend:** React 18, Vite, Tailwind CSS, React Icons
-- **Backend:** Node.js (Express), Lighthouse, chrome-launcher, node-fetch, Cheerio
+- **Backend:** Node.js (Express), Lighthouse, Puppeteer, node-fetch, Cheerio
 
 ## Getting started
 
-> **Prerequisite:** Node.js 18+ (Lighthouse requires a modern Node runtime and Chrome installation).
+> **Prerequisite:** Node.js 18+ (Puppeteer downloads a compatible Chromium build during install).
 
 1. **Install dependencies**
 
@@ -26,7 +26,7 @@ Landing Page Scanner is a modern, responsive web application that audits any lan
    npm install --prefix client
    ```
 
-   Installing Lighthouse will download a compatible Chromium build on first run.
+   Installing Puppeteer will download a compatible Chromium build on first run.
 
 2. **Run the development servers**
 
@@ -71,7 +71,7 @@ Large sites may take 30–60 seconds to complete a Lighthouse run. For the best 
 
 ## Troubleshooting
 
-- **Lighthouse fails to launch Chrome:** ensure you have the necessary system libraries for Chromium and try setting `CHROME_PATH` to a local Chrome binary.
+- **Chromium fails to launch:** ensure your OS has the necessary shared libraries (e.g., `libX11`, `libnss3`). Reinstalling dependencies will trigger Puppeteer to re-download Chromium.
 - **Robots.txt or sitemap checks fail:** some sites block `HEAD` requests. The analyzer automatically retries with `GET`, but corporate firewalls can still prevent access.
 - **Network-restricted environments:** when npm registry access is blocked, configure the `registry` setting (e.g., `npm config set registry https://registry.npmjs.org/`) before installing dependencies.
 

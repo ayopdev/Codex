@@ -1,9 +1,10 @@
 import lighthouse from 'lighthouse';
-import chromeLauncher from 'chrome-launcher';
+import puppeteer from 'puppeteer';
 
-const launchChrome = () =>
-  chromeLauncher.launch({
-    chromeFlags: ['--headless', '--no-sandbox', '--disable-gpu'],
+const launchBrowser = async () =>
+  puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-gpu'],
   });
 
 const scoreToStatus = (score) => {
@@ -20,14 +21,17 @@ const formatSeconds = (value) =>
   typeof value === 'number' ? `${(value / 1000).toFixed(2)} s` : 'Not available';
 
 export const analyzePerformance = async (url) => {
-  const chrome = await launchChrome();
+  const browser = await launchBrowser();
 
   try {
+    const endpoint = browser.wsEndpoint();
+    const endpointUrl = new URL(endpoint);
+    const port = Number(endpointUrl.port);
     const options = {
       logLevel: 'info',
       output: 'json',
       onlyCategories: ['performance'],
-      port: chrome.port,
+      port,
     };
 
     const runnerResult = await lighthouse(url, options);
@@ -102,8 +106,8 @@ export const analyzePerformance = async (url) => {
   } catch (error) {
     throw new Error(`Performance analysis failed: ${error.message}`);
   } finally {
-    if (chrome) {
-      await chrome.kill().catch(() => undefined);
+    if (browser) {
+      await browser.close().catch(() => undefined);
     }
   }
 };
