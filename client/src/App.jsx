@@ -25,6 +25,22 @@ const formatUrl = (value) => {
   }
 };
 
+const buildResultMessage = (seo, performance) => {
+  const seoFailed = Boolean(seo?.error);
+  const perfFailed = Boolean(performance?.error);
+
+  if (seoFailed && perfFailed) {
+    return 'We could not retrieve SEO or performance details for this URL. Check each tab for more context.';
+  }
+  if (seoFailed) {
+    return 'SEO insights were limited for this URL. Review the SEO tab for details about what we could not access.';
+  }
+  if (perfFailed) {
+    return 'Performance metrics were unavailable for this URL. Review the Performance tab for more information.';
+  }
+  return '';
+};
+
 const EmptyState = () => (
   <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-300 bg-white/60 p-12 text-center dark:border-slate-700 dark:bg-slate-900/40">
     <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">Ready when you are</h3>
@@ -84,6 +100,11 @@ export default function App() {
         const filtered = prev.filter((item) => item.url !== newEntry.url);
         return [newEntry, ...filtered].slice(0, 8);
       });
+
+      const notice = buildResultMessage(payload.seo, payload.performance);
+      if (notice) {
+        setError(notice);
+      }
     } catch (scanError) {
       setError(scanError.message || 'Something went wrong.');
     } finally {
@@ -95,6 +116,7 @@ export default function App() {
     setUrl(entry.url);
     setResults({ seo: entry.seo, performance: entry.performance });
     setActiveTab('seo');
+    setError(buildResultMessage(entry.seo, entry.performance));
   };
 
   const seoData = results?.seo ?? null;

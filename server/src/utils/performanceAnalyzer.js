@@ -20,10 +20,39 @@ const formatMs = (value) =>
 const formatSeconds = (value) =>
   typeof value === 'number' ? `${(value / 1000).toFixed(2)} s` : 'Not available';
 
+const createEmptyMetric = (label) => ({
+  label,
+  value: 'Not available',
+  status: 'error',
+});
+
+const createFallbackPerformanceResult = (errorMessage) => ({
+  score: null,
+  scoreStatus: 'error',
+  metrics: {
+    pageLoadTime: createEmptyMetric('Speed Index'),
+    largestContentfulPaint: createEmptyMetric('Largest Contentful Paint'),
+    firstInputDelay: createEmptyMetric('Max Potential FID'),
+    totalBlockingTime: createEmptyMetric('Total Blocking Time'),
+  },
+  imageAudits: [],
+  resourceSummary: [],
+  raw: {
+    lcp: null,
+    fid: null,
+    tbt: null,
+    loadTime: null,
+  },
+  error: true,
+  errorMessage: `Performance scan failed: ${errorMessage}`,
+});
+
 export const analyzePerformance = async (url) => {
-  const browser = await launchBrowser();
+  let browser;
 
   try {
+    browser = await launchBrowser();
+
     const endpoint = browser.wsEndpoint();
     const endpointUrl = new URL(endpoint);
     const port = Number(endpointUrl.port);
@@ -102,9 +131,12 @@ export const analyzePerformance = async (url) => {
         tbt: audits['total-blocking-time']?.displayValue,
         loadTime: audits['speed-index']?.displayValue,
       },
+      error: false,
+      errorMessage: null,
     };
   } catch (error) {
-    throw new Error(`Performance analysis failed: ${error.message}`);
+    console.error('Performance analysis error:', error);
+    return createFallbackPerformanceResult(error.message);
   } finally {
     if (browser) {
       await browser.close().catch(() => undefined);

@@ -1,5 +1,6 @@
 import {
   FiActivity,
+  FiAlertTriangle,
   FiBarChart2,
   FiClock,
   FiDatabase,
@@ -60,10 +61,22 @@ export const PerformanceOverview = ({ data }) => {
     metrics: { pageLoadTime, largestContentfulPaint, firstInputDelay, totalBlockingTime },
     imageAudits,
     resourceSummary,
+    error,
+    errorMessage,
   } = data;
 
   return (
     <div className="flex flex-col gap-6">
+      {error ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200">
+          <FiAlertTriangle className="mt-0.5 text-base" />
+          <div className="space-y-1">
+            <p className="font-semibold">We couldn't complete the Lighthouse performance audit.</p>
+            {errorMessage ? <p className="text-xs opacity-80">{errorMessage}</p> : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-slate-200 bg-gradient-to-r from-primary-50 via-slate-50 to-primary-100 p-6 shadow-lg dark:border-slate-800 dark:from-primary-900/30 dark:via-slate-900 dark:to-primary-900/40 lg:flex-row">
         <div className="flex flex-col items-center gap-4 text-center lg:flex-row lg:items-center lg:gap-8 lg:text-left">
           <Gauge score={score} status={scoreStatus} />

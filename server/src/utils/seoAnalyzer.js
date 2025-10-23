@@ -49,82 +49,151 @@ const checkPresence = async (targetUrl) => {
   }
 };
 
-export const analyzeSEO = async (url) => {
-  const html = await fetchText(url);
-  const $ = cheerio.load(html);
-
-  const title = $('title').first().text().trim();
-  const metaDescription = $(
-    'meta[name="description"], meta[name="Description"], meta[property="og:description"]'
-  )
-    .first()
-    .attr('content');
-  const canonicalRaw = $('link[rel="canonical"]').first().attr('href');
-  const canonical = canonicalRaw ? new URL(canonicalRaw, url).toString() : '';
-
-  const h1 = $('h1')
-    .map((_, element) => $(element).text().trim())
-    .get()
-    .filter(Boolean);
-  const h2 = $('h2')
-    .map((_, element) => $(element).text().trim())
-    .get()
-    .filter(Boolean);
-
-  const images = $('img');
-  const totalImages = images.length;
-  let missingAlt = 0;
-  images.each((_, element) => {
-    const alt = $(element).attr('alt');
-    if (!alt || !alt.trim()) {
-      missingAlt += 1;
-    }
-  });
-
+const createDefaultSeoResult = (url) => {
   const origin = new URL(url).origin;
   const robotsUrl = new URL('/robots.txt', origin).toString();
   const sitemapUrl = new URL('/sitemap.xml', origin).toString();
 
-  const [robotsPresent, sitemapPresent] = await Promise.all([
-    checkPresence(robotsUrl),
-    checkPresence(sitemapUrl),
-  ]);
-
   return {
     scannedUrl: url,
     title: {
-      value: title,
-      length: title.length,
-      status: titleStatus(title.length),
+      value: '',
+      length: 0,
+      status: 'error',
     },
     metaDescription: {
-      value: metaDescription || '',
-      length: metaDescription ? metaDescription.length : 0,
-      status: descriptionStatus(metaDescription ? metaDescription.length : 0),
+      value: '',
+      length: 0,
+      status: 'error',
     },
     headings: {
-      h1,
-      h2,
-      status: h1.length ? 'good' : 'warning',
+      h1: [],
+      h2: [],
+      status: 'error',
     },
     imageAlt: {
-      total: totalImages,
-      missing: missingAlt,
-      status: missingAlt === 0 ? 'good' : missingAlt > totalImages / 2 ? 'error' : 'warning',
+      total: 0,
+      missing: 0,
+      status: 'error',
     },
     canonical: {
-      value: canonical,
-      status: canonical ? 'good' : 'warning',
+      value: '',
+      status: 'warning',
     },
     robots: {
       url: robotsUrl,
-      present: robotsPresent,
-      status: robotsPresent ? 'good' : 'warning',
+      present: false,
+      status: 'warning',
     },
     sitemap: {
       url: sitemapUrl,
-      present: sitemapPresent,
-      status: sitemapPresent ? 'good' : 'warning',
+      present: false,
+      status: 'warning',
     },
+    error: false,
+    errorMessage: null,
   };
+};
+
+export const analyzeSEO = async (url) => {
+  const baseResult = createDefaultSeoResult(url);
+
+  try {
+    const html = await fetchText(url);
+    const $ = cheerio.load(html);
+
+    const title = $('title').first().text().trim();
+    const metaDescription = $(
+      'meta[name="description"], meta[name="Description"], meta[property="og:description"]'
+    )
+      .first()
+      .attr('content');
+    const canonicalRaw = $('link[rel="canonical"]').first().attr('href');
+    const canonical = canonicalRaw ? new URL(canonicalRaw, url).toString() : '';
+
+    const h1 = $('h1')
+      .map((_, element) => $(element).text().trim())
+      .get()
+      .filter(Boolean);
+    const h2 = $('h2')
+      .map((_, element) => $(element).text().trim())
+      .get()
+      .filter(Boolean);
+
+    const images = $('img');
+    const totalImages = images.length;
+    let missingAlt = 0;
+    images.each((_, element) => {
+      const alt = $(element).attr('alt');
+      if (!alt || !alt.trim()) {
+        missingAlt += 1;
+      }
+    });
+
+    const [robotsPresent, sitemapPresent] = await Promise.all([
+      checkPresence(baseResult.robots.url),
+      checkPresence(baseResult.sitemap.url),
+    ]);
+
+    return {
+      ...baseResult,
+      title: {
+        value: title,
+        length: title.length,
+        status: titleStatus(title.length),
+      },
+      metaDescription: {
+        value: metaDescription || '',
+        length: metaDescription ? metaDescription.length : 0,
+        status: descriptionStatus(metaDescription ? metaDescription.length : 0),
+      },
+      headings: {
+        h1,
+        h2,
+        status: h1.length ? 'good' : 'warning',
+      },
+      imageAlt: {
+        total: totalImages,
+        missing: missingAlt,
+        status: missingAlt === 0 ? 'good' : missingAlt > totalImages / 2 ? 'error' : 'warning',
+      },
+      canonical: {
+        value: canonical,
+        status: canonical ? 'good' : 'warning',
+      },
+      robots: {
+        url: baseResult.robots.url,
+        present: robotsPresent,
+        status: robotsPresent ? 'good' : 'warning',
+      },
+      sitemap: {
+        url: baseResult.sitemap.url,
+        present: sitemapPresent,
+        status: sitemapPresent ? 'good' : 'warning',
+      },
+    };
+  } catch (error) {
+    console.error('SEO analysis error:', error);
+
+    const [robotsPresent, sitemapPresent] = await Promise.all([
+      checkPresence(baseResult.robots.url),
+      checkPresence(baseResult.sitemap.url),
+    ]);
+
+    return {
+      ...baseResult,
+      robots: {
+        url: baseResult.robots.url,
+        present: robotsPresent,
+        status: robotsPresent ? 'good' : 'warning',
+      },
+      sitemap: {
+        url: baseResult.sitemap.url,
+        present: sitemapPresent,
+        status: sitemapPresent ? 'good' : 'warning',
+      },
+      error: true,
+      errorMessage: `SEO scan failed: ${error.message}`,
+    };
+  }
 };
