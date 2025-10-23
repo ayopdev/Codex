@@ -95,6 +95,43 @@ const createDefaultSeoResult = (url) => {
   };
 };
 
+const withRobotsAndSitemapStatus = (result, robotsPresent, sitemapPresent) => ({
+  ...result,
+  robots: {
+    ...result.robots,
+    present: robotsPresent,
+    status: robotsPresent ? 'good' : 'warning',
+  },
+  sitemap: {
+    ...result.sitemap,
+    present: sitemapPresent,
+    status: sitemapPresent ? 'good' : 'warning',
+  },
+});
+
+const normalizeSeoErrorMessage = (message) => {
+  if (!message) return 'SEO scan failed.';
+  return message.startsWith('SEO scan failed') ? message : `SEO scan failed: ${message}`;
+};
+
+export const buildSeoErrorResult = async (url, errorMessage) => {
+  const baseResult = createDefaultSeoResult(url);
+  const [robotsPresent, sitemapPresent] = await Promise.all([
+    checkPresence(baseResult.robots.url),
+    checkPresence(baseResult.sitemap.url),
+  ]);
+
+  return withRobotsAndSitemapStatus(
+    {
+      ...baseResult,
+      error: true,
+      errorMessage: normalizeSeoErrorMessage(errorMessage),
+    },
+    robotsPresent,
+    sitemapPresent
+  );
+};
+
 export const analyzeSEO = async (url) => {
   const baseResult = createDefaultSeoResult(url);
 
@@ -135,7 +172,7 @@ export const analyzeSEO = async (url) => {
       checkPresence(baseResult.sitemap.url),
     ]);
 
-    return {
+    const result = {
       ...baseResult,
       title: {
         value: title,
@@ -161,39 +198,11 @@ export const analyzeSEO = async (url) => {
         value: canonical,
         status: canonical ? 'good' : 'warning',
       },
-      robots: {
-        url: baseResult.robots.url,
-        present: robotsPresent,
-        status: robotsPresent ? 'good' : 'warning',
-      },
-      sitemap: {
-        url: baseResult.sitemap.url,
-        present: sitemapPresent,
-        status: sitemapPresent ? 'good' : 'warning',
-      },
     };
+
+    return withRobotsAndSitemapStatus(result, robotsPresent, sitemapPresent);
   } catch (error) {
     console.error('SEO analysis error:', error);
-
-    const [robotsPresent, sitemapPresent] = await Promise.all([
-      checkPresence(baseResult.robots.url),
-      checkPresence(baseResult.sitemap.url),
-    ]);
-
-    return {
-      ...baseResult,
-      robots: {
-        url: baseResult.robots.url,
-        present: robotsPresent,
-        status: robotsPresent ? 'good' : 'warning',
-      },
-      sitemap: {
-        url: baseResult.sitemap.url,
-        present: sitemapPresent,
-        status: sitemapPresent ? 'good' : 'warning',
-      },
-      error: true,
-      errorMessage: `SEO scan failed: ${error.message}`,
-    };
+    return buildSeoErrorResult(url, error.message);
   }
 };

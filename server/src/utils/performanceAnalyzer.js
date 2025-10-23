@@ -26,7 +26,14 @@ const createEmptyMetric = (label) => ({
   status: 'error',
 });
 
-const createFallbackPerformanceResult = (errorMessage) => ({
+const normalizePerformanceErrorMessage = (message) => {
+  if (!message) return 'Performance scan failed.';
+  return message.startsWith('Performance scan failed')
+    ? message
+    : `Performance scan failed: ${message}`;
+};
+
+export const buildPerformanceErrorResult = (errorMessage) => ({
   score: null,
   scoreStatus: 'error',
   metrics: {
@@ -44,7 +51,7 @@ const createFallbackPerformanceResult = (errorMessage) => ({
     loadTime: null,
   },
   error: true,
-  errorMessage: `Performance scan failed: ${errorMessage}`,
+  errorMessage: normalizePerformanceErrorMessage(errorMessage),
 });
 
 export const analyzePerformance = async (url) => {
@@ -136,7 +143,7 @@ export const analyzePerformance = async (url) => {
     };
   } catch (error) {
     console.error('Performance analysis error:', error);
-    return createFallbackPerformanceResult(error.message);
+    return buildPerformanceErrorResult(error.message);
   } finally {
     if (browser) {
       await browser.close().catch(() => undefined);

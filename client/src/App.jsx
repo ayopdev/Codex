@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FiAlertCircle, FiExternalLink } from 'react-icons/fi';
+import { FiAlertCircle, FiAlertTriangle, FiExternalLink } from 'react-icons/fi';
 import { ThemeToggle } from './components/ThemeToggle.jsx';
 import { ScanForm } from './components/ScanForm.jsx';
 import { ResultTabs } from './components/ResultTabs.jsx';
@@ -41,6 +41,11 @@ const buildResultMessage = (seo, performance) => {
   return '';
 };
 
+const buildResultBanner = (seo, performance) => {
+  const message = buildResultMessage(seo, performance);
+  return message ? { type: 'warning', message } : null;
+};
+
 const EmptyState = () => (
   <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-300 bg-white/60 p-12 text-center dark:border-slate-700 dark:bg-slate-900/40">
     <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200">Ready when you are</h3>
@@ -53,7 +58,7 @@ const EmptyState = () => (
 export default function App() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [banner, setBanner] = useState(null);
   const [results, setResults] = useState(null);
   const [activeTab, setActiveTab] = useState('seo');
   const [history, setHistory, clearHistory] = useLocalStorage('lps-history', []);
@@ -70,7 +75,7 @@ export default function App() {
     if (!url) return;
 
     setLoading(true);
-    setError('');
+    setBanner(null);
 
     try {
       const response = await fetch('/api/scan', {
@@ -81,7 +86,8 @@ export default function App() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Unable to scan the provided URL.');
+        const detail = payload.details ? ` (${payload.details})` : '';
+        throw new Error((payload.error || 'Unable to scan the provided URL.') + detail);
       }
 
       const payload = await response.json();
@@ -101,12 +107,10 @@ export default function App() {
         return [newEntry, ...filtered].slice(0, 8);
       });
 
-      const notice = buildResultMessage(payload.seo, payload.performance);
-      if (notice) {
-        setError(notice);
-      }
+      setBanner(buildResultBanner(payload.seo, payload.performance));
     } catch (scanError) {
-      setError(scanError.message || 'Something went wrong.');
+      setResults(null);
+      setBanner({ type: 'error', message: scanError.message || 'Something went wrong.' });
     } finally {
       setLoading(false);
     }
@@ -116,7 +120,7 @@ export default function App() {
     setUrl(entry.url);
     setResults({ seo: entry.seo, performance: entry.performance });
     setActiveTab('seo');
-    setError(buildResultMessage(entry.seo, entry.performance));
+    setBanner(buildResultBanner(entry.seo, entry.performance));
   };
 
   const seoData = results?.seo ?? null;
@@ -140,10 +144,20 @@ export default function App() {
 
         <ScanForm url={url} onUrlChange={setUrl} onSubmit={handleScan} loading={loading} />
 
-        {error ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-            <FiAlertCircle className="text-lg" />
-            {error}
+        {banner ? (
+          <div
+            className={`flex items-center gap-3 rounded-2xl p-4 text-sm shadow-sm ${
+              banner.type === 'warning'
+                ? 'border border-amber-200 bg-amber-50/80 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200'
+                : 'border border-rose-200 bg-rose-50/70 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+            }`}
+          >
+            {banner.type === 'warning' ? (
+              <FiAlertTriangle className="text-lg" />
+            ) : (
+              <FiAlertCircle className="text-lg" />
+            )}
+            {banner.message}
           </div>
         ) : null}
 

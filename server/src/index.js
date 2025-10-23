@@ -1,7 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { analyzeSEO } from './utils/seoAnalyzer.js';
-import { analyzePerformance } from './utils/performanceAnalyzer.js';
+import { analyzeSEO, buildSeoErrorResult } from './utils/seoAnalyzer.js';
+import {
+  analyzePerformance,
+  buildPerformanceErrorResult,
+} from './utils/performanceAnalyzer.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,10 +35,29 @@ app.post('/api/scan', async (req, res) => {
   }
 
   try {
-    const [seo, performance] = await Promise.all([
+    const [seoResult, performanceResult] = await Promise.allSettled([
       analyzeSEO(url),
       analyzePerformance(url),
     ]);
+
+    const seo =
+      seoResult.status === 'fulfilled'
+        ? seoResult.value
+        : await buildSeoErrorResult(
+            url,
+            seoResult.reason instanceof Error
+              ? seoResult.reason.message
+              : seoResult.reason || 'Unknown error'
+          );
+
+    const performance =
+      performanceResult.status === 'fulfilled'
+        ? performanceResult.value
+        : buildPerformanceErrorResult(
+            performanceResult.reason instanceof Error
+              ? performanceResult.reason.message
+              : performanceResult.reason || 'Unknown error'
+          );
 
     res.json({ seo, performance });
   } catch (error) {
