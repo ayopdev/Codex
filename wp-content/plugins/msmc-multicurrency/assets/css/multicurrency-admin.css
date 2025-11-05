@@ -1,0 +1,16 @@
+.msmc-settings .msmc-refresh-form {
+    margin-top: 2rem;
+}
+
+.msmc-settings table.widefat input[type="number"] {
+    width: 120px;
+}
+
+.msmc-settings .description {
+    margin-left: 0.5rem;
+}
+
+.msmc-refresh-notice {
+    margin-left: 1rem;
+    font-weight: 600;
+}
